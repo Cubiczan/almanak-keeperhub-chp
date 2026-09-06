@@ -1,0 +1,104 @@
+
+> almanak-keeperhub-chp@0.1.0 demo
+> tsx src/cli/demo.ts
+
+
+════════════════════════════════════════════════════════════════════════
+  Almanak KeeperGate
+  Almanak intent → Cubiczan CHP → KeeperHub execution
+  DoraHacks · KeeperHub Agent Economy
+════════════════════════════════════════════════════════════════════════
+
+  path                  happy path (LOCKED + simulate/execute)
+  strategy              TreasuryDipBuy.decide()
+  policy                almanak-keepergate-demo v1
+  KeeperHub             MOCK (no API key)
+  chain preference      84532
+  MCP                   https://app.keeperhub.com/mcp
+  REST                  https://app.keeperhub.com/api/execute/transfer
+
+════════════════════════════════════════════════════════════════════════
+1. Almanak strategy intent
+════════════════════════════════════════════════════════════════════════
+  ETH                   $1842.50
+  USDC balance          $1200
+  rule                  ETH < $2000 and USDC > $500 → Intent.swap(USDC, ETH, $25)
+
+  decide() → swap
+    {
+    "intent_type": "swap",
+    "intent_id": "f7b99817-a74a-4ffb-a9f8-6e1db24ead00",
+    "created_at": "2026-09-06T22:51:13.388Z",
+    "from_token": "USDC",
+    "to_token": "ETH",
+    "amount_usd": "25",
+    "amount": null,
+    "max_slippage": "0.005",
+    "protocol": "uniswap_v3",
+    "chain": "base",
+    "destination_chain": null,
+    "confidence": "0.91"
+  }
+
+════════════════════════════════════════════════════════════════════════
+2. Compile → KeeperHub execution plan
+════════════════════════════════════════════════════════════════════════
+  kind                  execute
+  notional USD          25
+  chain                 base-sepolia (84532)
+  venue                 uniswap_v3
+  confidence            0.91
+  KH tool               execute_transfer
+  KH chainId            84532
+  KH amount             0.001
+  KH recipient          0x000000000000000000000000000000000000dead
+  • Almanak chain "base" remapped to Base Sepolia (84532) for testnet settlement.
+  • KeeperHub broadcast size is the testnet settlement amount 0.001 (native), not the Almanak notional.
+  • Would call KeeperHub execute_protocol_action (uniswap_v3/swap). Demo settlement uses execute_transfer.
+
+════════════════════════════════════════════════════════════════════════
+3. CHP gate  EXPLORING → PROVISIONAL → LOCKED | HITL | BLOCKED
+════════════════════════════════════════════════════════════════════════
+  trail                 EXPLORING → PROVISIONAL → LOCKED
+  state                 LOCKED
+  daily spent           50 USD
+  daily remaining       200 USD
+  [locked] CHP LOCKED 25 USD on base-sepolia (84532) via uniswap_v3.
+
+════════════════════════════════════════════════════════════════════════
+4. KeeperHub simulate (simulate: true)
+════════════════════════════════════════════════════════════════════════
+  mode                  MOCK
+  success               true
+  wouldRevert           false
+  gasEstimate           21000
+
+════════════════════════════════════════════════════════════════════════
+5. KeeperHub execute (LOCKED only)
+════════════════════════════════════════════════════════════════════════
+  mode                  MOCK
+  label                 MOCK — KEEPERHUB_API_KEY unset. Full CHP flow ran; nothing was broadcast. No transaction hash is invented.
+  executionId           mock_exec_e6a4e0b0-9f80-4228-bd72-393d3895e23c
+  status                mock_recorded
+  tx hash               (none — MOCK path never fabricates a hash)
+
+════════════════════════════════════════════════════════════════════════
+6. Dual audit trail
+════════════════════════════════════════════════════════════════════════
+  CHP seq               3
+  CHP HMAC              a975d271680095ad0948b01e36dfc8362d13902def70afbb73103e4fe2a309a6
+  prevHash              0b4f6636c163778a17c54c33a55e5de417cdf7048950bbc6b8dc17697fe106c6
+  ledger file           /workspace/.chp/ledger-demo.jsonl
+  HMAC verify           ok
+  KeeperHub audit       MOCK id=mock_exec_e6a4e0b0-9f80-4228-bd72-393d3895e23c
+
+════════════════════════════════════════════════════════════════════════
+How to land a real DoraHacks tx
+════════════════════════════════════════════════════════════════════════
+  1. Copy .env.example → .env and set KEEPERHUB_API_KEY=kh_...
+  2. Create the key at https://app.keeperhub.com (org API keys).
+  3. Connect a wallet integration and fund it on Base Sepolia (84532).
+  4. Set KEEPERHUB_RECIPIENT_ADDRESS to a checksummed or lowercase address.
+  5. Re-run npm run demo — simulate then execute_transfer, then record the tx hash.
+  MCP (same key): https://app.keeperhub.com/mcp
+

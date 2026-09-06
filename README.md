@@ -1,117 +1,192 @@
 # Almanak KeeperGate
 
-**Almanak × KeeperHub via Cubiczan CHP**
+**Almanak × KeeperHub via Cubiczan CHP gate** — Almanak strategies emit DeFi intents; a fail-closed CHP policy gate decides; KeeperHub is the only path that may move value onchain.
 
-A thin MIT wrapper for the [DoraHacks KeeperHub — The Agent Economy Hackathon](https://dorahacks.io/hackathon/agent-economy).
+Package: `almanak-keeperhub-chp` · MIT · Cubiczan / Shyam Desigan (`sam@cubiczan.com`)
 
-Almanak is the **live project**: a production DeFi strategy / agent platform whose `IntentStrategy.decide()` method emits high-level intents (`Intent.swap`, `Intent.hold`, …). KeeperHub is the **deterministic onchain execution layer**. Cubiczan CHP is the **fail-closed policy gate** between them — not the live-project claim.
+---
+
+## Hackathon
+
+**[KeeperHub – The Agent Economy Hackathon](https://dorahacks.io/hackathon/agent-economy)** (DoraHacks)
+
+**Main track: Best Integration into a Live Project**
+
+Live project from the brief: **[Almanak](https://almanak.co)** (DeFi strategy / agent platform). Cubiczan CHP is the governance glue, not the live-project claim.
+
+| Role | What it is |
+| --- | --- |
+| **Almanak** | Live strategy runtime. `IntentStrategy.decide()` → `Intent.swap` / `Intent.hold`. [SDK](https://github.com/almanak-co/sdk) · [docs](https://sdk.docs.almanak.co/) |
+| **Cubiczan CHP** | Fail-closed policy gate + HMAC audit ledger (this repo; same state names as [agent-governance](https://github.com/icohangar-ops/agent-governance), original simplified code) |
+| **KeeperHub** | Deterministic execution. Simulate, then `execute_transfer` only if CHP is `LOCKED`. [MCP](https://app.keeperhub.com/mcp) · [MCP docs](https://docs.keeperhub.com/ai-tools/mcp-server) · [Direct Execution API](https://docs.keeperhub.com/api/direct-execution) |
+
+---
+
+## Problem
+
+Almanak agents are allowed to be probabilistic. Swaps, rebalances, and treasury clips are *intents* — “buy the dip if ETH is cheap.” Onchain value transfer is not probabilistic. A compiled intent that skips policy, dry-run, or audit is a capital bug.
+
+Something must sit between `decide()` and the chain: **caps, allowlists, human-in-the-loop, simulate-then-execute, and a ledger you can show a judge.**
+
+---
+
+## Solution
 
 ```
-Almanak decide()  →  CHP gate  →  KeeperHub simulate  →  execute_transfer  →  dual audit
-     SwapIntent     EXPLORING →     simulate: true        LOCKED only         HMAC ledger
-                    PROVISIONAL →                        + execution id /
-                    LOCKED | HITL | BLOCKED              tx hash when live
+Almanak decide()
+    → CHP  EXPLORING → PROVISIONAL → LOCKED | HITL_REQUIRED | BLOCKED
+    → KeeperHub simulate (simulate: true)
+    → execute_transfer  only if LOCKED and wouldRevert=false
+    → dual audit: CHP HMAC ledger + KeeperHub executionId / tx hash (live only)
 ```
 
-| Piece | Role | Surface |
+| Step | What happens |
+| --- | --- |
+| 1. Almanak intent | `TreasuryDipBuy.decide(market)` returns `Intent.swap(USDC→ETH, $25, chain="base", protocol="uniswap_v3")` or `Intent.hold` |
+| 2. Compile | Adapter remaps Almanak `base` → Base Sepolia `84532` and builds a KeeperHub transfer plan |
+| 3. CHP gate | Policy YAML: max notional, daily cap, venue/chain allowlist, min confidence. Missing fields **BLOCK** (fail-closed) |
+| 4. Simulate | `POST /api/execute/transfer` with boolean `"simulate": true`. Continue only if `success` and `wouldRevert: false` |
+| 5. Execute | Same body, no `simulate`, plus `Idempotency-Key`. **Never** called unless state is `LOCKED` |
+| 6. Audit | CHP HMAC chain (`seq`, `prevHash`, `hmac`) + KeeperHub `executionId`. Live path may also store a real `transactionHash`. **MOCK never invents a hash.** |
+
+`HITL_REQUIRED` and `BLOCKED` stop before KeeperHub write. `Intent.hold` never becomes a capital move.
+
+---
+
+## Live project: Almanak
+
+Almanak is the named live project in the KeeperHub Agent Economy brief. Production strategies implement `decide(market: MarketSnapshot) -> Intent | None` ([getting started](https://sdk.docs.almanak.co/getting-started.html), [Intent.swap](https://sdk.docs.almanak.co/api/intents.html)).
+
+This repo does **not** vendor the Python SDK. It reimplements the public vocabulary so judges can run offline:
+
+- `IntentStrategy.decide()`
+- `Intent.swap({ fromToken, toToken, amountUsd, chain, protocol, maxSlippage })`
+- `Intent.hold(reason)`
+- serialize/deserialize with Almanak field names (`intent_type`, `from_token`, `amount_usd`, `chain`, `protocol`)
+
+**Fidelity choices**
+
+- Sample strategy is the SDK dip-buy shape: ETH &lt; $2,000 and idle USDC &gt; $500 → swap $25 USDC→ETH on `uniswap_v3`.
+- Almanak chain name `"base"` remaps to **Base Sepolia (`84532`)** when `KEEPERHUB_CHAIN_ID` is a testnet, so a faithful `decide()` can settle without a mainnet wallet.
+- A live Almanak worker plugs in by POSTing `Intent.serialize(intent)` into `Intent.deserialize` (see `examples/almanak_hook.py`). Secrets stay in Almanak’s gateway sidecar.
+
+CHP evaluates the **Almanak USD notional** ($25). The onchain amount defaults to `KEEPERHUB_TRANSFER_AMOUNT=0.001` so a DoraHacks proof stays cheap.
+
+---
+
+## KeeperHub surfaces used
+
+Code talks **REST Direct Execution** (same tools the MCP server exposes). We do **not** speak MCP JSON-RPC in-process.
+
+| Surface | Used? | Where |
 | --- | --- | --- |
-| **Almanak** | Live strategy / agent that produces DeFi intents | [SDK](https://github.com/almanak-co/sdk) · [docs](https://sdk.docs.almanak.co/) · [almanak.co](https://almanak.co) |
-| **Cubiczan CHP** | Governance glue: caps, allowlists, HITL, HMAC ledger | This repo (simplified original gate; same state names as [agent-governance](https://github.com/icohangar-ops/agent-governance)) |
-| **KeeperHub** | Simulate then execute onchain | [MCP](https://app.keeperhub.com/mcp) · [MCP docs](https://docs.keeperhub.com/ai-tools/mcp-server) · [Direct Execution REST](https://docs.keeperhub.com/api/direct-execution) |
+| HTTP MCP `https://app.keeperhub.com/mcp` (`Bearer kh_...`) | Documented / same auth | Judges can attach this MCP to an agent with the same key |
+| `POST /api/execute/transfer` + `"simulate": true` | **Yes** | `src/keeperhub/live.ts` `simulateTransfer` |
+| `POST /api/execute/transfer` + `Idempotency-Key` | **Yes**, LOCKED only | `executeTransfer` |
+| `GET /api/execute/{executionId}/status` | **Yes** | Poll until `completed` / `failed`; 409 replay uses `originalExecutionId` |
+| MCP tools `execute_transfer`, `get_direct_execution_status` | Equivalent REST | Documented first-write sequence |
+| `execute_protocol_action` (`uniswap_v3/swap`) | **Noted, not called** | Adapter comment only; demo settlement is `execute_transfer` |
+| MOCK adapter | **Yes** when `KEEPERHUB_API_KEY` unset | Labeled `MOCK`. No fabricated `transactionHash` |
 
-## Judges: under five minutes
+Live sequence matches KeeperHub docs: boolean `simulate` (not the string `"true"`), then the same body with a SHA-256 key of `taskId|chainId|recipientAddress|amount|tokenAddress`.
 
-```bash
-git clone <this-repo> && cd almanak-keeperhub-chp
-npm install
-npm test
-npm run demo          # happy path: Almanak swap → CHP LOCKED → MOCK KeeperHub
-npm run demo:blocked  # same strategy, $5,000 clip → CHP BLOCKED (no execute)
+---
+
+## Architecture
+
+```mermaid
+flowchart LR
+  A["Almanak decide()<br/>Intent.swap / hold"] --> B["Adapter<br/>base → 84532"]
+  B --> C["CHP gate"]
+  C -->|"LOCKED"| D["KeeperHub simulate"]
+  C -->|"HITL / BLOCKED / hold"| G["HMAC ledger only"]
+  D -->|"success && !wouldRevert"| E["execute_transfer"]
+  D -->|"revert / error"| G
+  E --> F["executionId + tx hash"]
+  E --> G["CHP HMAC ledger"]
+  F --> G
 ```
 
-No API key is required. When `KEEPERHUB_API_KEY` is unset the full Almanak → CHP flow still runs and writes a **clearly labeled MOCK** execution record. The MOCK path **never invents a transaction hash**.
-
-## What the demo prints
-
-1. **Almanak** `TreasuryDipBuy.decide(market)` — same shape as the SDK getting-started strategy: if ETH &lt; $2,000 and idle USDC is above the floor, return `Intent.swap(USDC → ETH, $25, chain="base", protocol="uniswap_v3")`.
-2. **Adapter** compiles that intent to a KeeperHub `execute_transfer` plan on **Base Sepolia (`84532`)**. Almanak’s mainnet name `"base"` is remapped to the testnet so a faithful `decide()` can settle without a mainnet wallet.
-3. **CHP** walks `EXPLORING → PROVISIONAL → LOCKED` (or `HITL_REQUIRED` / `BLOCKED`) against `policy.example.yaml`.
-4. **KeeperHub** `simulate: true` on `POST /api/execute/transfer`. Execute only if the gate is `LOCKED` and the dry-run reports `success: true` and `wouldRevert: false`.
-5. **Dual audit**: CHP HMAC append-only ledger + KeeperHub `executionId` / `transactionHash` when live.
-
-## How to land a real DoraHacks transaction
-
-1. Create an organisation API key (`kh_…`) at [app.keeperhub.com](https://app.keeperhub.com) → Settings → Developer → API keys.
-2. Copy `.env.example` → `.env` and set `KEEPERHUB_API_KEY`. Do not commit `.env`.
-3. Connect a wallet integration in KeeperHub and fund it on **Base Sepolia** (`84532`). Sepolia (`11155111`) also works.
-4. Set `KEEPERHUB_RECIPIENT_ADDRESS` to an all-lowercase or valid EIP-55 address (KeeperHub rejects a bad mixed-case checksum).
-5. Run `npm run demo` again. The client follows the documented safe first-write sequence:
-   - `POST /api/execute/transfer` with `"simulate": true` (boolean, not the string `"true"`)
-   - same body without `simulate`, plus `Idempotency-Key` (SHA-256 of `taskId|chainId|recipientAddress|amount|tokenAddress`)
-   - poll `GET /api/execute/{executionId}/status` and keep the real `transactionHash` / `transactionLink`
-
-The same key authenticates the HTTP MCP server at `https://app.keeperhub.com/mcp` (`Authorization: Bearer kh_...`). This repo talks to the REST direct-execution API because `execute_transfer` + `simulate` is the documented first-write path; MCP exposes the same tools (`execute_transfer`, `get_direct_execution_status`, `execute_protocol_action`).
-
-CHP still evaluates the **Almanak USD notional** (the $25 swap). The broadcast size defaults to `KEEPERHUB_TRANSFER_AMOUNT=0.001` so the onchain proof stays cheap. Set `KEEPERHUB_USE_INTENT_AMOUNT=true` only if you intend to size the transfer from the snapshot price.
-
-## Plug in a real Almanak deployment
-
-This repo does **not** vendor the Almanak Python SDK. It reimplements the public `IntentStrategy` / `Intent.swap` / `MarketSnapshot` vocabulary in TypeScript so the demo runs offline.
-
-A live Almanak worker plugs in as:
-
-```python
-# inside your Almanak strategy container (no secrets here)
-intent = self.decide(market)
-if intent is not None:
-    gateway.post("/chp/propose", Intent.serialize(intent))
 ```
-
-```ts
-import { Intent, runGovernedCycle } from "almanak-keeperhub-chp";
-
-const intent = Intent.deserialize(almanakJson);
-// then compile → evaluateGate → KeeperHub
-```
-
-The gateway sidecar (Almanak’s recommended architecture) holds the KeeperHub key and the CHP ledger key. Strategy containers stay secretless.
-
-## Policy
-
-See `policy.example.yaml`. Caps:
-
-| Field | Demo value | Effect |
-| --- | --- | --- |
-| `max_notional_usd` | 100 | Above → `BLOCKED` |
-| `hitl_notional_usd` | 50 | At/above (and ≤ max) → `HITL_REQUIRED` |
-| `daily_cap_usd` | 250 | Projected spend above → `BLOCKED` |
-| `min_confidence` | 0.70 | Below → `BLOCKED` (or HITL if `hitl_on_low_confidence`) |
-| `allowed_chains` | 84532, 11155111 | Anything else → `BLOCKED` |
-| `allowed_venues` | uniswap_v3, aerodrome, enso, keeperhub_transfer | Anything else → `BLOCKED` |
-
-Unknown chain, missing notional, or missing confidence is **fail-closed** (`BLOCKED`). Only `LOCKED` decisions may call KeeperHub execute.
-
-## Repository map
-
-```
-src/almanak/     Intent factory, MarketSnapshot, IntentStrategy, sample strategy, compiler
-src/chp/         Policy YAML, gate state machine, HMAC append-only ledger
-src/keeperhub/   Mock + live adapters (REST simulate / execute_transfer / status)
+src/almanak/     Intent factory, MarketSnapshot, IntentStrategy, TreasuryDipBuy, compiler
+src/chp/         Policy YAML, EXPLORING→… state machine, HMAC ledger
+src/keeperhub/   Mock + live REST adapters
 src/cli/demo.ts  Judge walkthrough
 policy.example.yaml
 ```
 
-## Scripts
+| Policy field | Demo | Fail-closed effect |
+| --- | --- | --- |
+| `max_notional_usd` | 100 | Above → `BLOCKED` |
+| `hitl_notional_usd` | 50 | At/above and ≤ max → `HITL_REQUIRED` |
+| `daily_cap_usd` | 250 | Projected spend above → `BLOCKED` |
+| `min_confidence` | 0.70 | Below → `BLOCKED` (or HITL if flagged) |
+| `allowed_chains` | `84532`, `11155111` | Else `BLOCKED` |
+| `allowed_venues` | `uniswap_v3`, `aerodrome`, `enso`, `keeperhub_transfer` | Else `BLOCKED` |
 
-| Command | What it does |
+---
+
+## Quickstart
+
+```bash
+npm install
+npm test              # 23 tests — gate, ledger, adapter, pipeline
+npm run demo          # $25 swap → LOCKED → MOCK simulate/execute
+npm run demo:blocked  # $5,000 clip → BLOCKED (no KeeperHub write)
+```
+
+No secrets required. Unset `KEEPERHUB_API_KEY` → full CHP flow + **MOCK** receipt. MOCK never invents a tx hash.
+
+**Live (optional, for a real DoraHacks tx)**
+
+```bash
+cp .env.example .env
+# KEEPERHUB_API_KEY=kh_...          # app.keeperhub.com → Settings → Developer → org keys
+# KEEPERHUB_CHAIN_ID=84532          # Base Sepolia (11155111 also allowed)
+# KEEPERHUB_RECIPIENT_ADDRESS=0x…   # all-lowercase or valid EIP-55
+# KEEPERHUB_TRANSFER_AMOUNT=0.001
+npm run demo
+```
+
+Fund the KeeperHub wallet integration on Base Sepolia first. Keep the printed `transactionHash` / `transactionLink` — that is the submission proof.
+
+---
+
+## Demo video & submission checklist
+
+Film script: [DEMO.md](./DEMO.md) (≤3 min). `npm run demo` then `npm run demo:blocked`.
+
+| Item | Status |
 | --- | --- |
-| `npm test` | Gate, ledger, adapter, pipeline, money/idempotency tests |
-| `npm run demo` | Happy path without secrets |
-| `npm run demo:blocked` | Oversize clip → `BLOCKED`, no execute |
-| `npm run build` | Emit `dist/` |
+| Public MIT repo (`almanak-keeperhub-chp`) | Publish to `github.com/Cubiczan` (mirror `icohangar-ops` if the org token is available) |
+| Demo video | Record from DEMO.md; MOCK is acceptable if labeled; attach a live tx if you have a key |
+| KeeperHub tx link | Only after a LIVE run. Do not paste a made-up hash |
+| `npm test` / `npm run demo` green offline | Yes |
+
+**What still breaks / is out of scope**
+
+- Not a hosted Almanak cloud deployment — the adapter is the public `decide()` / `Intent.swap` contract, not `pipx install almanak` inside this repo.
+- `execute_protocol_action` (DEX swap) is not implemented; the onchain slice is `execute_transfer` so a fresh org wallet can land a verifiable testnet tx.
+- `HITL_REQUIRED` is recorded and stops execution; there is no approval UI to promote it to `LOCKED`.
+- Re-running the happy-path demo many times can trip `daily_cap_usd` via `.chp/*.jsonl`.
+- Live path needs a funded KeeperHub wallet + valid recipient checksum. Simulation errors are fail-closed (no broadcast).
+
+---
+
+## Judging rubric
+
+| Criterion | How this repo answers it |
+| --- | --- |
+| **Integration depth** | Almanak is the live project: same `IntentStrategy.decide` / `Intent.swap` shapes, serialize field names, and a documented gateway hook. CHP is glue, not the integration claim. |
+| **Execution through KeeperHub** | LOCKED cycles call the documented simulate → `execute_transfer` → status poll path (REST equivalents of the MCP tools). Writes are skipped on HITL/BLOCKED/hold. |
+| **Reliability / observability** | Fail-closed policy; boolean simulate; stable Idempotency-Key; HMAC-chained ledger with tamper check; MOCK vs LIVE labeled; no synthetic tx hashes. |
+| **Usefulness** | A capital-moving Almanak agent can be allowed to *decide* without being allowed to *broadcast*. Caps, allowlists, and HITL are the missing production control. |
+| **DX** | `npm install && npm test && npm run demo` with no keys. Policy is YAML. `.env.example` is the live checklist. DEMO.md is a 3-minute film script. |
+
+---
 
 ## License
 
-MIT © Cubiczan / Shyam Desigan (`sam@cubiczan.com`)
+MIT © Cubiczan / Shyam Desigan · `sam@cubiczan.com`
 
-Video script: [DEMO.md](./DEMO.md)
+[Hackathon page](https://dorahacks.io/hackathon/agent-economy) · [Almanak SDK](https://github.com/almanak-co/sdk) · [KeeperHub MCP](https://docs.keeperhub.com/ai-tools/mcp-server)
