@@ -1,8 +1,4 @@
 
-> almanak-keeperhub-chp@0.1.0 demo
-> tsx src/cli/demo.ts
-
-
 ════════════════════════════════════════════════════════════════════════
   Almanak KeeperGate
   Almanak intent → Cubiczan CHP → KeeperHub execution
@@ -27,8 +23,8 @@
   decide() → swap
     {
     "intent_type": "swap",
-    "intent_id": "f7b99817-a74a-4ffb-a9f8-6e1db24ead00",
-    "created_at": "2026-09-06T22:51:13.388Z",
+    "intent_id": "0e294a89-6ec0-468e-9c4b-e93fdee364eb",
+    "created_at": "2026-09-06T23:08:55.004Z",
     "from_token": "USDC",
     "to_token": "ETH",
     "amount_usd": "25",
@@ -78,7 +74,7 @@
 ════════════════════════════════════════════════════════════════════════
   mode                  MOCK
   label                 MOCK — KEEPERHUB_API_KEY unset. Full CHP flow ran; nothing was broadcast. No transaction hash is invented.
-  executionId           mock_exec_e6a4e0b0-9f80-4228-bd72-393d3895e23c
+  executionId           mock_exec_53d33022-87e1-40a1-a7b9-d8acba660a17
   status                mock_recorded
   tx hash               (none — MOCK path never fabricates a hash)
 
@@ -86,11 +82,11 @@
 6. Dual audit trail
 ════════════════════════════════════════════════════════════════════════
   CHP seq               3
-  CHP HMAC              a975d271680095ad0948b01e36dfc8362d13902def70afbb73103e4fe2a309a6
-  prevHash              0b4f6636c163778a17c54c33a55e5de417cdf7048950bbc6b8dc17697fe106c6
-  ledger file           /workspace/.chp/ledger-demo.jsonl
+  CHP HMAC              a857753de3e5298d9efc7b37a9a5525c8652b0c4d7552927fbee1d49b9705521
+  prevHash              5c13d41e2c0a7d93b706864041ee39018acc38b16ce677e164d837b7217cbb30
+  ledger file           /workspace/hackathon/almanak-keeperhub-chp/.chp/ledger-demo.jsonl
   HMAC verify           ok
-  KeeperHub audit       MOCK id=mock_exec_e6a4e0b0-9f80-4228-bd72-393d3895e23c
+  KeeperHub audit       MOCK id=mock_exec_53d33022-87e1-40a1-a7b9-d8acba660a17
 
 ════════════════════════════════════════════════════════════════════════
 How to land a real DoraHacks tx

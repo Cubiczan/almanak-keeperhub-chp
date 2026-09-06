@@ -1,0 +1,69 @@
+{
+  "01_title.png": {
+    "title": "Almanak KeeperGate",
+    "subtitle": "KeeperHub Agent Economy \u00b7 Best Integration into a Live Project",
+    "bullets": [
+      "Almanak is the live DeFi strategy platform.",
+      "Cubiczan CHP is a fail-closed policy gate.",
+      "KeeperHub is the only path that may move value.",
+      "Pipeline: Almanak intent \u2192 Cubiczan CHP \u2192 KeeperHub execution."
+    ],
+    "accent": "CYAN"
+  },
+  "02_almanak_live.png": {
+    "title": "Live project: Almanak",
+    "subtitle": "Published IntentStrategy.decide() shape",
+    "bullets": [
+      "Almanak strategies emit typed intents (swap, transfer, \u2026).",
+      "This demo uses TreasuryDipBuy: ETH dip + idle USDC \u2192 Intent.swap.",
+      "Track goal: Best Integration into a Live Project (Almanak).",
+      "KeeperHub settles; CHP decides whether settlement may run."
+    ],
+    "accent": "MAGENTA"
+  },
+  "03_problem.png": {
+    "title": "Problem",
+    "subtitle": "Agents decide fast \u2014 value movement must not",
+    "bullets": [
+      "An Almanak decide() can propose a swap the moment prices dip.",
+      "Without a gate, keepers can broadcast oversized or off-policy clips.",
+      "Need fail-closed policy: max notional, HITL, daily cap, confidence, venues.",
+      "Missing confidence, unknown chain, or oversize notional must block."
+    ],
+    "accent": "ORANGE"
+  },
+  "04_architecture.png": {
+    "title": "Architecture",
+    "subtitle": "Almanak intent \u2192 Cubiczan CHP \u2192 KeeperHub",
+    "bullets": [
+      "1) Almanak decide() returns Intent.swap with notional + confidence.",
+      "2) Adapter remaps chain base \u2192 Base Sepolia (84532) for testnet.",
+      "3) CHP trail: EXPLORING \u2192 PROVISIONAL \u2192 LOCKED | HITL | BLOCKED.",
+      "4) Only LOCKED may simulate then execute on KeeperHub (MOCK here).",
+      "5) Dual audit: CHP HMAC ledger + KeeperHub execution id."
+    ],
+    "accent": "GREEN"
+  },
+  "12_blocked_intro.png": {
+    "title": "Blocked path",
+    "subtitle": "demo:blocked \u2014 same strategy, $5000 clip",
+    "bullets": [
+      "Same Almanak TreasuryDipBuy decide() shape.",
+      "Notional raised to $5000 to trip max_notional_usd 100.",
+      "Expect CHP BLOCKED \u2014 simulate/execute must never run.",
+      "Product claim: Almanak may decide; KeeperHub may not fire."
+    ],
+    "accent": "RED"
+  },
+  "16_close.png": {
+    "title": "Almanak decides. CHP gates. KeeperHub executes.",
+    "subtitle": "Public MIT repo \u00b7 this recording \u00b7 MOCK path (no invented hashes)",
+    "bullets": [
+      "Happy path: $25 @ 0.91 on uniswap_v3 \u2192 CHP LOCKED \u2192 MOCK execute.",
+      "Blocked path: $5000 \u2192 max_notional \u2192 BLOCKED; no KeeperHub fire.",
+      "With a real kh_ key: LIVE simulate/execute and paste KeeperHub tx only.",
+      "Thanks \u2014 DoraHacks KeeperHub Agent Economy."
+    ],
+    "accent": "CYAN"
+  }
+}

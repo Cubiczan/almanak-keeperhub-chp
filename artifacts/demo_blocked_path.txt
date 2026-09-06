@@ -1,8 +1,4 @@
 
-> almanak-keeperhub-chp@0.1.0 demo:blocked
-> tsx src/cli/demo.ts --blocked
-
-
 ════════════════════════════════════════════════════════════════════════
   Almanak KeeperGate
   Almanak intent → Cubiczan CHP → KeeperHub execution
@@ -27,8 +23,8 @@
   decide() → swap
     {
     "intent_type": "swap",
-    "intent_id": "67a7eee2-61d0-4d2e-bd97-9e8cf8514eb1",
-    "created_at": "2026-09-06T22:51:13.701Z",
+    "intent_id": "5184388c-ad84-422a-8355-eaaa614d4f17",
+    "created_at": "2026-09-06T23:08:55.911Z",
     "from_token": "USDC",
     "to_token": "ETH",
     "amount_usd": "5000",
@@ -78,10 +74,10 @@
 ════════════════════════════════════════════════════════════════════════
 6. Dual audit trail
 ════════════════════════════════════════════════════════════════════════
-  CHP seq               3
-  CHP HMAC              deec415d889523a82f2fdc062c99b072dbe958cdad4b1a4d3126721ed3bb9a64
-  prevHash              f32a4ffab252fccd6d8e4ef7a4ad07fbda6460473ce3159bd3d8fa88f2806107
-  ledger file           /workspace/.chp/ledger-blocked.jsonl
+  CHP seq               2
+  CHP HMAC              40e2d62e9b0cb65c1be4ffd07760d5b3e3fe2896880d3cda0f6b0b51f24876ef
+  prevHash              681a0fd39f2fd8b89a57ae90e6d37de43c36e45635530cb26851ad8e183af7fc
+  ledger file           /workspace/hackathon/almanak-keeperhub-chp/.chp/ledger-blocked.jsonl
   HMAC verify           ok
   KeeperHub audit       no KeeperHub execution id (gated)
 
