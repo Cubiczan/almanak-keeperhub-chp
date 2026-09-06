@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+.chp/
+coverage/
+*.log
+.DS_Store
+agent-tools/

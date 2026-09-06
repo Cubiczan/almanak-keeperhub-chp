@@ -1,0 +1,39 @@
+# Cubiczan CHP policy for Almanak → KeeperHub execution.
+# Fail-closed: unknown chains, venues, or missing fields BLOCK.
+
+policy_id: almanak-keepergate-demo
+version: 1
+description: >
+  Demo caps for DoraHacks Agent Economy. Almanak intents are admitted
+  only on allowlisted testnets and venues, under notional / daily /
+  confidence limits.
+
+# Economic caps (USD). HITL fires at/above hitl, BLOCK fires above max.
+max_notional_usd: "100"
+hitl_notional_usd: "50"
+daily_cap_usd: "250"
+min_confidence: "0.70"
+
+# Almanak chain names and numeric ids are both accepted.
+# Testnet remap of Almanak "base" → Base Sepolia happens in the adapter.
+allowed_chains:
+  - 84532      # Base Sepolia
+  - 11155111   # Ethereum Sepolia
+  - base-sepolia
+  - sepolia
+
+# Almanak protocol / venue strings from Intent.swap(..., protocol=...)
+allowed_venues:
+  - uniswap_v3
+  - aerodrome
+  - enso
+  - keeperhub_transfer
+
+allowed_tokens:
+  - ETH
+  - WETH
+  - USDC
+  - USDC.e
+
+# When true, confidence below min_confidence is HITL_REQUIRED instead of BLOCKED.
+hitl_on_low_confidence: false

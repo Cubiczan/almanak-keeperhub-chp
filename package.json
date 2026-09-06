@@ -1,0 +1,42 @@
+{
+  "name": "almanak-keeperhub-chp",
+  "version": "0.1.0",
+  "description": "Almanak × KeeperHub via Cubiczan CHP — policy-gated DeFi intent execution for the KeeperHub Agent Economy hackathon.",
+  "license": "MIT",
+  "author": "Cubiczan / Shyam Desigan <sam@cubiczan.com>",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "almanak-keepergate": "dist/cli/demo.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "demo": "tsx src/cli/demo.ts",
+    "demo:blocked": "tsx src/cli/demo.ts --blocked",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "almanak",
+    "keeperhub",
+    "chp",
+    "agent-economy",
+    "defi",
+    "governance"
+  ],
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "yaml": "^2.8.1",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.1",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
