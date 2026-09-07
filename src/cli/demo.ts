@@ -75,6 +75,12 @@ async function main(): Promise<void> {
   kv("policy", `${policy.policyId} v${policy.version}`);
   kv("KeeperHub", keeperhub.mode === "MOCK" ? `${YELLOW}MOCK (no API key)${RESET}` : `${GREEN}LIVE${RESET}`);
   kv("chain preference", String(config.chainId));
+  kv(
+    "settlement",
+    config.tokenAddress
+      ? `${YELLOW}TOKEN${RESET} ${config.tokenAddress}`
+      : `${CYAN}native${RESET} ETH`,
+  );
   kv("MCP", config.mcpUrl);
   kv("REST", `${config.apiBase}/api/execute/transfer`);
 
@@ -112,6 +118,12 @@ async function main(): Promise<void> {
       kv("KH tool", result.plan.keeperHub.tool);
       kv("KH chainId", String(result.plan.keeperHub.chainId));
       kv("KH amount", result.plan.keeperHub.amount);
+      kv(
+        "KH asset",
+        result.plan.keeperHub.tokenAddress
+          ? `${YELLOW}TOKEN${RESET} ${result.plan.keeperHub.tokenAddress}`
+          : `${CYAN}native${RESET}`,
+      );
       kv("KH recipient", result.plan.keeperHub.recipientAddress);
     }
     for (const note of result.plan.notes) {
@@ -177,8 +189,8 @@ async function main(): Promise<void> {
   heading("How to land a real DoraHacks tx");
   console.log(`  1. Copy .env.example → .env and set KEEPERHUB_API_KEY=kh_...`);
   console.log(`  2. Create the key at https://app.keeperhub.com (org API keys).`);
-  console.log(`  3. Connect a wallet integration and fund it on Base Sepolia (84532).`);
-  console.log(`  4. Set KEEPERHUB_RECIPIENT_ADDRESS to a checksummed or lowercase address.`);
+  console.log(`  3. Native proof: fund wallet on Base Sepolia (84532); leave token empty.`);
+  console.log(`  4. USDC proof: chain 8453 + Base USDC token + amount 0.01; set recipient EIP-55/lowercase.`);
   console.log(`  5. Re-run npm run demo — simulate then execute_transfer, then record the tx hash.`);
   console.log(`  MCP (same key): ${config.mcpUrl}`);
   console.log("");

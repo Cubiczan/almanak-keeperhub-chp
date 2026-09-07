@@ -16,9 +16,17 @@ const ID_TO_NAME = new Map<number, AlmanakChainName>(
   (Object.entries(CHAIN_IDS) as [AlmanakChainName, number][]).map(([name, id]) => [id, name]),
 );
 
+/** Official Base mainnet USDC. Used when KEEPERHUB_TOKEN_ADDRESS is set to this. */
+export const BASE_USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+
 const TESTNET_REMAP: Partial<Record<AlmanakChainName, number>> = {
   base: CHAIN_IDS["base-sepolia"],
   ethereum: CHAIN_IDS.sepolia,
+};
+
+const MAINNET_REMAP: Partial<Record<AlmanakChainName, number>> = {
+  base: CHAIN_IDS.base,
+  "base-sepolia": CHAIN_IDS.base,
 };
 
 export function parseChainRef(value: string | number): { id?: number; name?: string; raw: string } {
@@ -36,24 +44,28 @@ export function parseChainRef(value: string | number): { id?: number; name?: str
 
 /**
  * Resolve an Almanak `chain=` field to a KeeperHub numeric chain id.
- * When the target env chain is a testnet, mainnet Almanak names remap
- * (base → 84532, ethereum → 11155111) so a faithful `Intent.swap(..., chain="base")`
- * can settle on Base Sepolia for the hackathon demo.
+ *
+ * Preferred env id wins for the Base family:
+ * - 84532 / 11155111 → remap Almanak `base` / `ethereum` to the testnet
+ * - 8453 → remap Almanak `base` (and `base-sepolia`) to Base mainnet
  */
 export function resolveChainId(
   almanakChain: string | number | undefined,
-  preferredTestnetId: number,
+  preferredChainId: number,
 ): number | undefined {
   if (almanakChain === undefined || almanakChain === "") {
-    return preferredTestnetId;
+    return preferredChainId;
   }
   const parsed = parseChainRef(almanakChain);
   if (parsed.id === undefined) return undefined;
   const name = parsed.name as AlmanakChainName | undefined;
   const preferTestnet =
-    preferredTestnetId === CHAIN_IDS["base-sepolia"] || preferredTestnetId === CHAIN_IDS.sepolia;
+    preferredChainId === CHAIN_IDS["base-sepolia"] || preferredChainId === CHAIN_IDS.sepolia;
   if (preferTestnet && name && TESTNET_REMAP[name]) {
     return TESTNET_REMAP[name];
+  }
+  if (preferredChainId === CHAIN_IDS.base && name && MAINNET_REMAP[name]) {
+    return MAINNET_REMAP[name];
   }
   return parsed.id;
 }

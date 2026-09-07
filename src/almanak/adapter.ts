@@ -56,18 +56,30 @@ export function compileAlmanakIntent(input: {
   const tokens = tokensOf(intent);
   const notes: string[] = [];
 
-  if (chainId !== undefined && intent.chain && String(intent.chain).toLowerCase() === "base" && chainId === 84532) {
-    notes.push('Almanak chain "base" remapped to Base Sepolia (84532) for testnet settlement.');
+  if (chainId !== undefined && intent.chain && String(intent.chain).toLowerCase() === "base") {
+    if (chainId === 84532) {
+      notes.push('Almanak chain "base" remapped to Base Sepolia (84532) for testnet settlement.');
+    } else if (chainId === 8453) {
+      notes.push('Almanak chain "base" resolved to Base mainnet (8453).');
+    }
   }
 
-  const transferAmount = config.useIntentAmount && notionalUsd
-    ? nativeFromUsd(notionalUsd, market)
-    : canonicalizeAmount(config.transferAmount);
+  const tokenAddress = config.tokenAddress;
+  const assetLabel = tokenAddress ? `TOKEN ${tokenAddress}` : "native";
+
+  const transferAmount =
+    config.useIntentAmount && notionalUsd
+      ? tokenAddress
+        ? canonicalizeAmount(notionalUsd)
+        : nativeFromUsd(notionalUsd, market)
+      : canonicalizeAmount(config.transferAmount);
 
   if (!config.useIntentAmount) {
     notes.push(
-      `KeeperHub broadcast size is the testnet settlement amount ${transferAmount} (native), not the Almanak notional.`,
+      `KeeperHub broadcast size is ${transferAmount} (${assetLabel}), not the Almanak USD notional.`,
     );
+  } else if (tokenAddress) {
+    notes.push("KEEPERHUB_USE_INTENT_AMOUNT: ERC-20 amount uses Almanak notional (USDC ≈ $1).");
   }
 
   const tool: KeeperHubTool =
@@ -102,6 +114,7 @@ export function compileAlmanakIntent(input: {
           chainId,
           recipientAddress: config.recipientAddress,
           amount: transferAmount,
+          tokenAddress,
           memo: `almanak:${intent.intentType}:${intent.intentId}`,
         },
     notes,

@@ -32,7 +32,7 @@ function plan(intent = Intent.swap({
   return compileAlmanakIntent({
     intent,
     market: demoDipMarket(),
-    config: loadConfig({ chainId: 84532, keeperhubApiKey: undefined }),
+    config: loadConfig({ chainId: 84532, keeperhubApiKey: undefined, tokenAddress: undefined, transferAmount: "0.001" }),
     strategyName: "test",
   });
 }
@@ -184,6 +184,32 @@ describe("CHP gate", () => {
     });
     expect(decision.state).toBe("BLOCKED");
     expect(decision.reasons.some((r) => r.code === "missing_confidence")).toBe(true);
+  });
+
+
+  it("LOCKS a Base mainnet (8453) plan when policy allowlists base", () => {
+    const decision = evaluateGate({
+      plan: compileAlmanakIntent({
+        intent: Intent.swap({
+          fromToken: "USDC",
+          toToken: "ETH",
+          amountUsd: "25",
+          chain: "base",
+          protocol: "uniswap_v3",
+          confidence: "0.91",
+        }),
+        market: demoDipMarket(),
+        config: loadConfig({
+          chainId: 8453,
+          tokenAddress: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          transferAmount: "0.01",
+        }),
+        strategyName: "test",
+      }),
+      policy: policy({ allowed_chains: [8453, 84532, "base"] }),
+      dailySpentUsd: "0",
+    });
+    expect(decision.state).toBe("LOCKED");
   });
 
   it("does not LOCK a hold intent", () => {

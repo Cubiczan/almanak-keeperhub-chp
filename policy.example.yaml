@@ -5,8 +5,8 @@ policy_id: almanak-keepergate-demo
 version: 1
 description: >
   Demo caps for DoraHacks Agent Economy. Almanak intents are admitted
-  only on allowlisted testnets and venues, under notional / daily /
-  confidence limits.
+  on allowlisted Base (mainnet + Sepolia), Ethereum Sepolia, and
+  venues, under notional / daily / confidence limits.
 
 # Economic caps (USD). HITL fires at/above hitl, BLOCK fires above max.
 max_notional_usd: "100"
@@ -15,10 +15,13 @@ daily_cap_usd: "250"
 min_confidence: "0.70"
 
 # Almanak chain names and numeric ids are both accepted.
-# Testnet remap of Almanak "base" → Base Sepolia happens in the adapter.
+# Env remap: KEEPERHUB_CHAIN_ID=84532 → base becomes Base Sepolia;
+#            KEEPERHUB_CHAIN_ID=8453  → base stays Base mainnet.
 allowed_chains:
+  - 8453       # Base mainnet (USDC ERC-20 proof)
   - 84532      # Base Sepolia
   - 11155111   # Ethereum Sepolia
+  - base
   - base-sepolia
   - sepolia
 
